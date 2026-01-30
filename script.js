@@ -54,23 +54,44 @@ async function loadInitialData() {
 
 function populateCategories(categories) {
     const selectProducto = document.getElementById('p_categoria');
+    const selectEditProducto = document.getElementById('edit_prod_categoria');
+    const tableBody = document.getElementById('categoriasTableBody');
+
     selectProducto.innerHTML = '';
+    if (selectEditProducto) selectEditProducto.innerHTML = '';
 
     if (categories.length === 0) {
         selectProducto.innerHTML = '<option value="" disabled selected>No hay categorías registradas</option>';
-        document.getElementById('listaCategorias').innerHTML = '<li>No hay categorías.</li>';
+        if (selectEditProducto) selectEditProducto.innerHTML = '<option value="" disabled selected>No hay categorías</option>';
+        tableBody.innerHTML = '<tr><td colspan="3">No hay categorías.</td></tr>';
         return;
     }
 
     selectProducto.innerHTML = '<option value="" disabled selected>Seleccione una categoría</option>';
+    if (selectEditProducto) selectEditProducto.innerHTML = '<option value="" disabled>Seleccione una categoría</option>';
 
-    const listHtml = categories.map(cat => {
+    const tableHtml = categories.map(cat => {
         const name = cat.nombre || `(ID ${cat.id})`;
         selectProducto.innerHTML += `<option value="${name}">${name}</option>`;
-        return `<li>ID: ${cat.id} | Nombre: ${name}</li>`;
+        if (selectEditProducto) selectEditProducto.innerHTML += `<option value="${name}">${name}</option>`;
+
+        return `
+            <tr>
+                <td>${cat.id}</td>
+                <td>${name}</td>
+                <td>
+                    <button class="btn-icon btn-edit" onclick="openEditCategoriaModal(${cat.id}, '${name.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon btn-delete" onclick="handleDeleteCategoria(${cat.id}, '${name.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
     }).join('');
 
-    document.getElementById('listaCategorias').innerHTML = listHtml;
+    tableBody.innerHTML = tableHtml;
 }
 
 function setupForms() {
@@ -101,6 +122,13 @@ function setupForms() {
     document.getElementById('cargarInventarioBtn').addEventListener('click', loadInventario);
     document.getElementById('cargarDatosGraficosBtn').addEventListener('click', handleLoadDashboard);
     document.getElementById('calcularResumenBtn').addEventListener('click', calcularResumenFinanciero);
+
+    // Lista de productos
+    document.getElementById('cargarProductosBtn').addEventListener('click', loadProductos);
+
+    // Edit forms
+    document.getElementById('editCategoriaForm').addEventListener('submit', handleEditCategoriaSubmit);
+    document.getElementById('editProductoForm').addEventListener('submit', handleEditProductoSubmit);
 }
 
 // ================= DASHBOARD FUNCTIONS =================
@@ -581,4 +609,191 @@ function displayStatus(elementId, type, message) {
     el.style.display = 'block';
     el.className = `status-message ${type}`;
     el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : type === 'warning' ? 'exclamation-triangle' : 'info'}-circle"></i> ${message}`;
+}
+
+// ================= CATEGORY CRUD FUNCTIONS =================
+
+function openEditCategoriaModal(id, nombre) {
+    document.getElementById('edit_cat_id').value = id;
+    document.getElementById('edit_cat_nombre').value = nombre;
+    document.getElementById('editCategoriaModal').style.display = 'block';
+}
+
+function closeEditCategoriaModal() {
+    document.getElementById('editCategoriaModal').style.display = 'none';
+    document.getElementById('editCategoriaForm').reset();
+}
+
+async function handleEditCategoriaSubmit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit_cat_id').value;
+    const nuevoNombre = document.getElementById('edit_cat_nombre').value;
+
+    displayStatus('statusCategoria', 'info', 'Actualizando categoría...');
+
+    try {
+        const data = await window.electronAPI.editarCategoria(parseInt(id), nuevoNombre);
+
+        if (data.status === 'success') {
+            displayStatus('statusCategoria', 'success', data.message);
+            closeEditCategoriaModal();
+            loadInitialData();
+        } else {
+            displayStatus('statusCategoria', 'error', data.message);
+        }
+    } catch (error) {
+        displayStatus('statusCategoria', 'error', `Error: ${error.message}`);
+    }
+}
+
+async function handleDeleteCategoria(id, nombre) {
+    if (!confirm(`¿Está seguro de eliminar la categoría "${nombre}"?\n\nNota: No se puede eliminar si hay productos usando esta categoría.`)) {
+        return;
+    }
+
+    displayStatus('statusCategoria', 'info', 'Eliminando categoría...');
+
+    try {
+        const data = await window.electronAPI.eliminarCategoria(id);
+
+        if (data.status === 'success') {
+            displayStatus('statusCategoria', 'success', data.message);
+            loadInitialData();
+        } else {
+            displayStatus('statusCategoria', 'error', data.message);
+        }
+    } catch (error) {
+        displayStatus('statusCategoria', 'error', `Error: ${error.message}`);
+    }
+}
+
+// ================= PRODUCT LIST AND CRUD FUNCTIONS =================
+
+async function loadProductos() {
+    displayStatus('statusListaProductos', 'info', 'Cargando productos...');
+    const tableBody = document.getElementById('productosTableBody');
+    tableBody.innerHTML = '<tr><td colspan="8">Cargando...</td></tr>';
+
+    try {
+        const data = await window.electronAPI.getProductos();
+
+        if (data.status === 'success' && data.data && data.data.length > 0) {
+            displayStatus('statusListaProductos', 'success', `${data.data.length} productos cargados.`);
+
+            // Get categories for the edit modal
+            const catData = await window.electronAPI.getCategorias();
+            if (catData.status === 'success') {
+                populateCategories(catData.data);
+            }
+
+            tableBody.innerHTML = data.data.map(p => {
+                const stockStyle = p.stock < 5 ? 'style="color: var(--danger-color); font-weight: bold;"' : '';
+                return `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.codigo}</td>
+                        <td>${p.nombre}</td>
+                        <td>${p.categoria}</td>
+                        <td>$${parseFloat(p.precio_compra).toFixed(2)}</td>
+                        <td>$${parseFloat(p.precio_venta).toFixed(2)}</td>
+                        <td ${stockStyle}>${p.stock}</td>
+                        <td>
+                            <button class="btn-icon btn-edit" onclick='openEditProductoModal(${JSON.stringify(p)})'>
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="handleDeleteProducto(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            displayStatus('statusListaProductos', 'warning', 'No hay productos registrados.');
+            tableBody.innerHTML = '<tr><td colspan="8">No hay productos.</td></tr>';
+        }
+    } catch (error) {
+        displayStatus('statusListaProductos', 'error', `Error: ${error.message}`);
+        tableBody.innerHTML = '<tr><td colspan="8">Error al cargar datos.</td></tr>';
+    }
+}
+
+function openEditProductoModal(producto) {
+    document.getElementById('edit_prod_id').value = producto.id;
+    document.getElementById('edit_prod_codigo').value = producto.codigo;
+    document.getElementById('edit_prod_nombre').value = producto.nombre;
+    document.getElementById('edit_prod_categoria').value = producto.categoria;
+    document.getElementById('edit_prod_precio_compra').value = producto.precio_compra;
+    document.getElementById('edit_prod_precio_venta').value = producto.precio_venta;
+    document.getElementById('edit_prod_stock').value = producto.stock;
+    document.getElementById('editProductoModal').style.display = 'block';
+}
+
+function closeEditProductoModal() {
+    document.getElementById('editProductoModal').style.display = 'none';
+    document.getElementById('editProductoForm').reset();
+}
+
+async function handleEditProductoSubmit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit_prod_id').value;
+
+    const data = {
+        codigo: document.getElementById('edit_prod_codigo').value,
+        nombre: document.getElementById('edit_prod_nombre').value,
+        categoria: document.getElementById('edit_prod_categoria').value,
+        precio_compra: document.getElementById('edit_prod_precio_compra').value,
+        precio_venta: document.getElementById('edit_prod_precio_venta').value,
+        stock: document.getElementById('edit_prod_stock').value
+    };
+
+    displayStatus('statusListaProductos', 'info', 'Actualizando producto...');
+
+    try {
+        const result = await window.electronAPI.editarProducto(parseInt(id), data);
+
+        if (result.status === 'success') {
+            displayStatus('statusListaProductos', 'success', result.message);
+            closeEditProductoModal();
+            loadProductos();
+        } else {
+            displayStatus('statusListaProductos', 'error', result.message);
+        }
+    } catch (error) {
+        displayStatus('statusListaProductos', 'error', `Error: ${error.message}`);
+    }
+}
+
+async function handleDeleteProducto(id, nombre) {
+    if (!confirm(`¿Está seguro de eliminar el producto "${nombre}"?\n\nNota: No se puede eliminar si hay transacciones relacionadas.`)) {
+        return;
+    }
+
+    displayStatus('statusListaProductos', 'info', 'Eliminando producto...');
+
+    try {
+        const result = await window.electronAPI.eliminarProducto(id);
+
+        if (result.status === 'success') {
+            displayStatus('statusListaProductos', 'success', result.message);
+            loadProductos();
+        } else {
+            displayStatus('statusListaProductos', 'error', result.message);
+        }
+    } catch (error) {
+        displayStatus('statusListaProductos', 'error', `Error: ${error.message}`);
+    }
+}
+
+// Close modals when clicking outside
+window.onclick = function (event) {
+    const editCatModal = document.getElementById('editCategoriaModal');
+    const editProdModal = document.getElementById('editProductoModal');
+
+    if (event.target === editCatModal) {
+        closeEditCategoriaModal();
+    }
+    if (event.target === editProdModal) {
+        closeEditProductoModal();
+    }
 }

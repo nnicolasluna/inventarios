@@ -96,6 +96,32 @@ ipcMain.handle('db:agregarCategoria', async (event, nombre) => {
     }
 });
 
+ipcMain.handle('db:editarCategoria', async (event, id, nuevoNombre) => {
+    try {
+        const result = db.editarCategoria(id, nuevoNombre);
+        if (result.success) {
+            return { status: 'success', message: result.message };
+        } else {
+            return { status: 'error', message: result.error };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:eliminarCategoria', async (event, id) => {
+    try {
+        const result = db.eliminarCategoria(id);
+        if (result.success) {
+            return { status: 'success', message: result.message };
+        } else {
+            return { status: 'error', message: result.error };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
 // Productos
 ipcMain.handle('db:agregarProducto', async (event, data) => {
     try {
@@ -127,6 +153,41 @@ ipcMain.handle('db:getInventario', async () => {
     try {
         const data = db.getInventario();
         return { status: 'success', data };
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:getProductos', async () => {
+    try {
+        const data = db.getProductos();
+        return { status: 'success', data };
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:editarProducto', async (event, id, data) => {
+    try {
+        const result = db.editarProducto(id, data);
+        if (result.success) {
+            return { status: 'success', message: result.message };
+        } else {
+            return { status: 'error', message: result.error };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:eliminarProducto', async (event, id) => {
+    try {
+        const result = db.eliminarProducto(id);
+        if (result.success) {
+            return { status: 'success', message: result.message };
+        } else {
+            return { status: 'error', message: result.error };
+        }
     } catch (error) {
         return { status: 'error', message: error.message };
     }

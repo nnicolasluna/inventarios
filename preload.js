@@ -8,11 +8,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Categorías
     getCategorias: () => ipcRenderer.invoke('db:getCategorias'),
     agregarCategoria: (nombre) => ipcRenderer.invoke('db:agregarCategoria', nombre),
+    editarCategoria: (id, nuevoNombre) => ipcRenderer.invoke('db:editarCategoria', id, nuevoNombre),
+    eliminarCategoria: (id) => ipcRenderer.invoke('db:eliminarCategoria', id),
 
     // Productos
     agregarProducto: (data) => ipcRenderer.invoke('db:agregarProducto', data),
     buscarProducto: (query) => ipcRenderer.invoke('db:buscarProducto', query),
     getInventario: () => ipcRenderer.invoke('db:getInventario'),
+    getProductos: () => ipcRenderer.invoke('db:getProductos'),
+    editarProducto: (id, data) => ipcRenderer.invoke('db:editarProducto', id, data),
+    eliminarProducto: (id) => ipcRenderer.invoke('db:eliminarProducto', id),
 
     // Transacciones
     registrarTransaccion: (data) => ipcRenderer.invoke('db:registrarTransaccion', data),

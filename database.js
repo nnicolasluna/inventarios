@@ -101,6 +101,54 @@ class InventoryDatabase {
         }));
     }
 
+    editarCategoria(id, nuevoNombre) {
+        try {
+            // Verificar si la categoría existe
+            const result = this.db.exec(`SELECT * FROM categorias WHERE id = ${id}`);
+            if (result.length === 0) {
+                return { success: false, error: 'Categoría no encontrada' };
+            }
+
+            const stmt = this.db.prepare('UPDATE categorias SET nombre = ? WHERE id = ?');
+            stmt.run([nuevoNombre, id]);
+            stmt.free();
+            this.save();
+
+            return { success: true, message: 'Categoría actualizada exitosamente' };
+        } catch (error) {
+            return { success: false, error: error.message.includes('UNIQUE') ? 'Ya existe una categoría con ese nombre' : error.message };
+        }
+    }
+
+    eliminarCategoria(id) {
+        try {
+            // Verificar si la categoría existe
+            const catResult = this.db.exec(`SELECT nombre FROM categorias WHERE id = ${id}`);
+            if (catResult.length === 0) {
+                return { success: false, error: 'Categoría no encontrada' };
+            }
+
+            const nombreCategoria = catResult[0].values[0][0];
+
+            // Verificar si hay productos usando esta categoría
+            const prodResult = this.db.exec(`SELECT COUNT(*) as count FROM productos WHERE categoria = '${nombreCategoria}'`);
+            const count = prodResult[0].values[0][0];
+
+            if (count > 0) {
+                return { success: false, error: `No se puede eliminar. Hay ${count} producto(s) usando esta categoría` };
+            }
+
+            const stmt = this.db.prepare('DELETE FROM categorias WHERE id = ?');
+            stmt.run([id]);
+            stmt.free();
+            this.save();
+
+            return { success: true, message: 'Categoría eliminada exitosamente' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
     // =============== PRODUCTOS ===============
 
     agregarProducto(data) {
@@ -165,6 +213,85 @@ class InventoryDatabase {
         stmt.run([nuevaCantidad, productoId]);
         stmt.free();
         this.save();
+    }
+
+    getProductos() {
+        const result = this.db.exec('SELECT * FROM productos ORDER BY id');
+        if (result.length === 0) return [];
+
+        return result[0].values.map(row => ({
+            id: row[0],
+            codigo: row[1],
+            nombre: row[2],
+            categoria: row[3],
+            precio_compra: row[4],
+            precio_venta: row[5],
+            stock: row[6]
+        }));
+    }
+
+    editarProducto(id, data) {
+        try {
+            // Verificar si el producto existe
+            const result = this.db.exec(`SELECT * FROM productos WHERE id = ${id}`);
+            if (result.length === 0) {
+                return { success: false, error: 'Producto no encontrado' };
+            }
+
+            const stmt = this.db.prepare(`
+                UPDATE productos 
+                SET codigo = ?, nombre = ?, categoria = ?, precio_compra = ?, precio_venta = ?, stock = ?
+                WHERE id = ?
+            `);
+            stmt.run([
+                data.codigo,
+                data.nombre,
+                data.categoria,
+                parseFloat(data.precio_compra),
+                parseFloat(data.precio_venta),
+                parseInt(data.stock),
+                id
+            ]);
+            stmt.free();
+            this.save();
+
+            return { success: true, message: 'Producto actualizado exitosamente' };
+        } catch (error) {
+            return { success: false, error: error.message.includes('UNIQUE') ? 'El código de producto ya existe' : error.message };
+        }
+    }
+
+    eliminarProducto(id) {
+        try {
+            // Verificar si el producto existe
+            const prodResult = this.db.exec(`SELECT * FROM productos WHERE id = ${id}`);
+            if (prodResult.length === 0) {
+                return { success: false, error: 'Producto no encontrado' };
+            }
+
+            // Verificar si hay compras relacionadas
+            const comprasResult = this.db.exec(`SELECT COUNT(*) as count FROM compras WHERE producto_id = ${id}`);
+            const comprasCount = comprasResult[0].values[0][0];
+
+            // Verificar si hay ventas relacionadas
+            const ventasResult = this.db.exec(`SELECT COUNT(*) as count FROM ventas WHERE producto_id = ${id}`);
+            const ventasCount = ventasResult[0].values[0][0];
+
+            const totalTransacciones = comprasCount + ventasCount;
+
+            if (totalTransacciones > 0) {
+                return { success: false, error: `No se puede eliminar. Hay ${totalTransacciones} transacción(es) relacionada(s)` };
+            }
+
+            const stmt = this.db.prepare('DELETE FROM productos WHERE id = ?');
+            stmt.run([id]);
+            stmt.free();
+            this.save();
+
+            return { success: true, message: 'Producto eliminado exitosamente' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
     }
 
     // =============== TRANSACCIONES ===============
