@@ -96,12 +96,12 @@ function populateCategories(categories) {
 
 function setupForms() {
     // Configuración
-    document.getElementById('iniciarDBBtn').addEventListener('click', () => handleConfigAction('iniciar'));
+    /* document.getElementById('iniciarDBBtn').addEventListener('click', () => handleConfigAction('iniciar'));
     document.getElementById('resetDBBtn').addEventListener('click', () => {
         if (window.confirm("¡ADVERTENCIA! ¿Deseas RESETEAR TODA la base de datos? Esto es irreversible.")) {
             handleConfigAction('resetear');
         }
-    });
+    }); */
 
     // Categorías y Productos
     document.getElementById('categoriaForm').addEventListener('submit', (e) => handlePostAction(e, 'agregarCategoria', 'statusCategoria'));

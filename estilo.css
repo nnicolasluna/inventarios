@@ -4,7 +4,7 @@
   --secondary-color: #28a745;
   --danger-color: #dc3545;
   --background-color: #f4f7f6;
-  --sidebar-color: #2c3e50;
+  --sidebar-color: #151f2f;
   --text-light: #ecf0f1;
   --card-bg: #ffffff;
   --warning-color: #ffc107;
@@ -38,7 +38,12 @@ body {
   font-size: 1.5rem;
   font-weight: bold;
   margin-bottom: 30px;
-  color: var(--primary-color);
+  /* color: var(--primary-color); */
+  display: flex;
+  align-items: center;
+}
+.logo img {
+  max-width: 50px;
 }
 .sidebar-nav a {
   display: flex;
