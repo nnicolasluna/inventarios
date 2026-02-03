@@ -320,21 +320,56 @@
 
             <!-- Sección 7: Configuración -->
             <section id="configuracion" class="content-section">
-                <h2><i class="fas fa-cog"></i> Configuración de Base de Datos</h2>
-                <!-- <div class="config-actions">
-                    <p>Esta acción **creará/verificará** las pestañas necesarias en Google Sheet.</p>
-                    <button id="iniciarDBBtn" class="btn primary-btn">
-                        <i class="fas fa-play-circle"></i> Iniciar Base de Datos
-                    </button>
+                <h2><i class="fas fa-cog"></i> Configuración</h2>
 
-                    <p class="warning-text" style="color: var(--danger-color); font-weight: bold; margin-top: 20px;">
-                        ¡ADVERTENCIA! Esta acción eliminará **TODOS** los datos.
-                    </p>
-                    <button id="resetDBBtn" class="btn danger-btn">
-                        <i class="fas fa-sync-alt"></i> Resetear Base de Datos
-                    </button>
+                <div class="config-group">
+                    <h3><i class="fas fa-file-export"></i> Exportar Datos</h3>
+                    <p>Exporta los registros de ventas y compras a diferentes formatos.</p>
+
+                    <div class="button-group-responsive">
+                        <div class="export-block">
+                            <h4>Compras</h4>
+                            <div class="btn-row">
+                                <!--  <button id="exportComprasPDFBtn" class="btn primary-btn">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button> -->
+                                <button id="exportComprasExcelBtn" class="btn success-btn">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="export-block">
+                            <h4>Ventas</h4>
+                            <div class="btn-row">
+                                <!-- <button id="exportVentasPDFBtn" class="btn primary-btn">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button> -->
+                                <button id="exportVentasExcelBtn" class="btn success-btn">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="statusConfig" class="status-message"></div> -->
+
+                <div class="config-group mt-20">
+                    <h3><i class="fas fa-database"></i> Base de Datos</h3>
+                    <p>Gestión de la base de datos local SQLite.</p>
+
+                    <div class="btn-row">
+                        <button id="backupDBBtn" class="btn info-btn">
+                            <i class="fas fa-download"></i> Respaldar Base de Datos Completa
+                        </button>
+                    </div>
+
+                    <!--     <div class="danger-zone mt-20">
+                        <p class="warning-text">
+                            <i class="fas fa-exclamation-triangle"></i> Zona de Peligro
+                        </p>
+                    </div> -->
+
+                    <div id="statusConfig" class="status-message"></div>
             </section>
         </main>
     </div>

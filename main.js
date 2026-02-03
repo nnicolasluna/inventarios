@@ -258,3 +258,216 @@ ipcMain.handle('db:resetear', async () => {
     }
 });
 
+// =============== EXPORTACIÓN ===============
+const { dialog } = require('electron');
+const fs = require('fs');
+
+// Función auxiliar para guardar archivos
+async function saveFile(content, defaultName, filters) {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+        title: 'Guardar Archivo',
+        defaultPath: defaultName,
+        filters: filters
+    });
+
+    if (canceled || !filePath) return null;
+
+    try {
+        fs.writeFileSync(filePath, content);
+        return filePath;
+    } catch (error) {
+        throw new Error('Error al guardar el archivo: ' + error.message);
+    }
+}
+
+ipcMain.handle('db:exportPurchasesPDF', async () => {
+    try {
+        const { jsPDF } = require('jspdf');
+        require('jspdf-autotable');
+
+        const purchases = db.getCompras();
+        if (purchases.length === 0) return { status: 'error', message: 'No hay compras para exportar' };
+
+        const doc = new jsPDF();
+        doc.text('Reporte de Compras', 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Fecha de reporte: ${new Date().toLocaleDateString()}`, 14, 22);
+
+        const tableColumn = ["ID", "Fecha", "Producto", "Cantidad", "Precio", "Proveedor"];
+        const tableRows = [];
+
+        purchases.forEach(purchase => {
+            const purchaseData = [
+                purchase.id,
+                purchase.fecha.split('T')[0],
+                purchase.producto_nombre,
+                purchase.cantidad,
+                `$${purchase.precio_compra.toFixed(2)}`,
+                purchase.proveedor || '-'
+            ];
+            tableRows.push(purchaseData);
+        });
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 30,
+        });
+
+        const pdfData = doc.output('arraybuffer');
+        const buffer = Buffer.from(pdfData);
+
+        const filePath = await saveFile(buffer, `compras_${Date.now()}.pdf`, [{ name: 'PDF', extensions: ['pdf'] }]);
+
+        if (filePath) {
+            return { status: 'success', message: `Reporte guardado en: ${filePath}` };
+        } else {
+            return { status: 'cancelled', message: 'Exportación cancelada' };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:exportPurchasesExcel', async () => {
+    try {
+        const XLSX = require('xlsx');
+
+        const purchases = db.getCompras();
+        if (purchases.length === 0) return { status: 'error', message: 'No hay compras para exportar' };
+
+        const data = purchases.map(p => ({
+            ID: p.id,
+            Fecha: p.fecha.split('T')[0],
+            Producto: p.producto_nombre,
+            Codigo: p.producto_codigo,
+            Cantidad: p.cantidad,
+            Precio_Unitario: p.precio_compra,
+            Total: p.cantidad * p.precio_compra,
+            Proveedor: p.proveedor
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Compras");
+
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+
+        const filePath = await saveFile(excelBuffer, `compras_${Date.now()}.xlsx`, [{ name: 'Excel', extensions: ['xlsx'] }]);
+
+        if (filePath) {
+            return { status: 'success', message: `Reporte guardado en: ${filePath}` };
+        } else {
+            return { status: 'cancelled', message: 'Exportación cancelada' };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:exportSalesPDF', async () => {
+    try {
+        const { jsPDF } = require('jspdf');
+        require('jspdf-autotable');
+
+        const sales = db.getVentas();
+        if (sales.length === 0) return { status: 'error', message: 'No hay ventas para exportar' };
+
+        const doc = new jsPDF();
+        doc.text('Reporte de Ventas', 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Fecha de reporte: ${new Date().toLocaleDateString()}`, 14, 22);
+
+        const tableColumn = ["ID", "Fecha", "Producto", "Cantidad", "Precio", "Cliente"];
+        const tableRows = [];
+
+        sales.forEach(sale => {
+            const saleData = [
+                sale.id,
+                sale.fecha.split('T')[0],
+                sale.producto_nombre,
+                sale.cantidad,
+                `$${sale.precio_venta.toFixed(2)}`,
+                sale.cliente || '-'
+            ];
+            tableRows.push(saleData);
+        });
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 30,
+        });
+
+        const pdfData = doc.output('arraybuffer');
+        const buffer = Buffer.from(pdfData);
+
+        const filePath = await saveFile(buffer, `ventas_${Date.now()}.pdf`, [{ name: 'PDF', extensions: ['pdf'] }]);
+
+        if (filePath) {
+            return { status: 'success', message: `Reporte guardado en: ${filePath}` };
+        } else {
+            return { status: 'cancelled', message: 'Exportación cancelada' };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:exportSalesExcel', async () => {
+    try {
+        const XLSX = require('xlsx');
+
+        const sales = db.getVentas();
+        if (sales.length === 0) return { status: 'error', message: 'No hay ventas para exportar' };
+
+        const data = sales.map(s => ({
+            ID: s.id,
+            Fecha: s.fecha.split('T')[0],
+            Producto: s.producto_nombre,
+            Codigo: s.producto_codigo,
+            Cantidad: s.cantidad,
+            Precio_Unitario: s.precio_venta,
+            Total: s.cantidad * s.precio_venta,
+            Cliente: s.cliente
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+
+        const filePath = await saveFile(excelBuffer, `ventas_${Date.now()}.xlsx`, [{ name: 'Excel', extensions: ['xlsx'] }]);
+
+        if (filePath) {
+            return { status: 'success', message: `Reporte guardado en: ${filePath}` };
+        } else {
+            return { status: 'cancelled', message: 'Exportación cancelada' };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+ipcMain.handle('db:backupDatabase', async () => {
+    try {
+        const dbPath = path.join(app.getPath('userData'), 'inventario.db');
+        if (!fs.existsSync(dbPath)) {
+            return { status: 'error', message: 'No se encontró la base de datos para respaldar' };
+        }
+
+        const buffer = fs.readFileSync(dbPath);
+        const filePath = await saveFile(buffer, `backup_inventario_${Date.now()}.db`, [{ name: 'SQLite DB', extensions: ['db'] }]);
+
+        if (filePath) {
+            return { status: 'success', message: `Respaldo guardado en: ${filePath}` };
+        } else {
+            return { status: 'cancelled', message: 'Respaldo cancelado' };
+        }
+    } catch (error) {
+        return { status: 'error', message: error.message };
+    }
+});
+
+

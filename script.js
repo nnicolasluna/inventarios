@@ -129,6 +129,32 @@ function setupForms() {
     // Edit forms
     document.getElementById('editCategoriaForm').addEventListener('submit', handleEditCategoriaSubmit);
     document.getElementById('editProductoForm').addEventListener('submit', handleEditProductoSubmit);
+
+    // Exportación
+    const btnIds = [
+        { id: 'exportComprasPDFBtn', action: 'exportPurchasesPDF' },
+        { id: 'exportComprasExcelBtn', action: 'exportPurchasesExcel' },
+        { id: 'exportVentasPDFBtn', action: 'exportSalesPDF' },
+        { id: 'exportVentasExcelBtn', action: 'exportSalesExcel' },
+        { id: 'backupDBBtn', action: 'backupDatabase' }
+    ];
+
+    btnIds.forEach(btn => {
+        const element = document.getElementById(btn.id);
+        if (element) {
+            element.addEventListener('click', () => handleExportAction(btn.action));
+        }
+    });
+
+    // Database Reset
+    const resetBtn = document.getElementById('resetDBBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            if (confirm('¡ADVERTENCIA CRÍTICA!\n\nEsta acción borrará PERMANENTEMENTE todos los datos (productos, categorías, ventas, compras).\n\n¿Estás seguro de continuar?')) {
+                handleConfigAction('resetear');
+            }
+        });
+    }
 }
 
 // ================= DASHBOARD FUNCTIONS =================
@@ -596,6 +622,43 @@ async function handleConfigAction(action) {
         displayStatus('statusConfig', 'error', `Error de conexión: ${error.message}.`);
     } finally {
         setButtonState(false);
+    }
+}
+
+async function handleExportAction(actionName) {
+    const statusConfig = document.getElementById('statusConfig');
+    const btnMap = {
+        'exportPurchasesPDF': 'exportComprasPDFBtn',
+        'exportPurchasesExcel': 'exportComprasExcelBtn',
+        'exportSalesPDF': 'exportVentasPDFBtn',
+        'exportSalesExcel': 'exportVentasExcelBtn',
+        'backupDatabase': 'backupDBBtn'
+    };
+
+    const btnId = btnMap[actionName];
+    if (btnId) {
+        const btn = document.getElementById(btnId);
+        btn.disabled = true;
+    }
+
+    displayStatus('statusConfig', 'info', `Iniciando exportación...`);
+
+    try {
+        const result = await window.electronAPI[actionName]();
+
+        if (result.status === 'success') {
+            displayStatus('statusConfig', 'success', result.message);
+        } else if (result.status === 'cancelled') {
+            displayStatus('statusConfig', 'info', result.message);
+        } else {
+            displayStatus('statusConfig', 'error', result.message);
+        }
+    } catch (error) {
+        displayStatus('statusConfig', 'error', `Error inesperado: ${error.message}`);
+    } finally {
+        if (btnId) {
+            document.getElementById(btnId).disabled = false;
+        }
     }
 }
 

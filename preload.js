@@ -29,7 +29,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Configuración
     iniciar: () => ipcRenderer.invoke('db:iniciar'),
-    resetear: () => ipcRenderer.invoke('db:resetear')
+    resetear: () => ipcRenderer.invoke('db:resetear'),
+
+    // Exportación
+    exportPurchasesPDF: () => ipcRenderer.invoke('db:exportPurchasesPDF'),
+    exportPurchasesExcel: () => ipcRenderer.invoke('db:exportPurchasesExcel'),
+    exportSalesPDF: () => ipcRenderer.invoke('db:exportSalesPDF'),
+    exportSalesExcel: () => ipcRenderer.invoke('db:exportSalesExcel'),
+    backupDatabase: () => ipcRenderer.invoke('db:backupDatabase')
 });
 
 console.log('Preload script cargado - APIs de BD expuestas');
