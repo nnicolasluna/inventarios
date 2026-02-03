@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const { exec } = require('child_process');
 const InventoryDatabase = require('./database');
 
 let mainWindow;
@@ -55,6 +56,49 @@ let db;
 
 // Inicializar la base de datos cuando la app esté lista
 app.whenReady().then(async () => {
+    // Verificación de UUID
+    const checkUUID = () => {
+        return new Promise((resolve, reject) => {
+            exec('wmic csproduct get uuid', (error, stdout, stderr) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                const lines = stdout.trim().split('\n');
+                // Generalmente la primera linea es el encabezado UUID, la segunda el valor
+                if (lines.length >= 2) {
+                    resolve(lines[1].trim());
+                } else {
+                    // Intento fallback si solo devuelve el UUID
+                    resolve(lines[0].trim());
+                }
+            });
+        });
+    };
+
+    try {
+        const currentUUID = await checkUUID();
+        // =================================================================================
+        // CONFIGURACIÓN DE LICENCIA
+        // SI NECESITAS CAMBIAR EL UUID PERMITIDO, EDITA LA SIGUIENTE LÍNEA:
+        const allowedUUID = "86568F4F-74BA-7436-2ABC-5811229CE4F5";
+        /* const allowedUUID = "01887304-856D-3D4D-91E0-B574F0569C63"; */
+        // =================================================================================
+
+        console.log(`UUID Detectado: ${currentUUID}`);
+
+        if (currentUUID !== allowedUUID) {
+            dialog.showErrorBox('Error de Licencia', 'Copia ilegal detectada. Este software no está autorizado para ejecutarse en este equipo. \nUUID: ' + currentUUID);
+            app.quit();
+            return;
+        }
+    } catch (error) {
+        console.error('Error al verificar UUID:', error);
+        dialog.showErrorBox('Error de Sistema', 'No se pudo verificar la identidad del equipo.');
+        app.quit();
+        return;
+    }
+
     db = new InventoryDatabase();
     await db.initialize();
     console.log('Base de datos SQLite inicializada');
@@ -259,7 +303,8 @@ ipcMain.handle('db:resetear', async () => {
 });
 
 // =============== EXPORTACIÓN ===============
-const { dialog } = require('electron');
+
+
 const fs = require('fs');
 
 // Función auxiliar para guardar archivos
