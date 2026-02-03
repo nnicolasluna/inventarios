@@ -59,19 +59,28 @@ app.whenReady().then(async () => {
     // Verificación de UUID
     const checkUUID = () => {
         return new Promise((resolve, reject) => {
-            exec('wmic csproduct get uuid', (error, stdout, stderr) => {
+            // Usamos PowerShell en lugar de wmic para compatibilidad con Windows 11
+            const cmd = 'powershell.exe -Command "(Get-CimInstance -Class Win32_ComputerSystemProduct).UUID"';
+
+            exec(cmd, (error, stdout, stderr) => {
                 if (error) {
-                    reject(error);
+                    // Intento fallback con wmic por si acaso (para versiones muy viejas)
+                    exec('wmic csproduct get uuid', (err, out, serr) => {
+                        if (err) {
+                            reject(error); // Si ambos fallan, devolvemos el error original de powershell o una mezcla
+                            return;
+                        }
+                        const lines = out.trim().split('\n');
+                        if (lines.length >= 2) {
+                            resolve(lines[1].trim());
+                        } else {
+                            resolve(lines[0].trim());
+                        }
+                    });
                     return;
                 }
-                const lines = stdout.trim().split('\n');
-                // Generalmente la primera linea es el encabezado UUID, la segunda el valor
-                if (lines.length >= 2) {
-                    resolve(lines[1].trim());
-                } else {
-                    // Intento fallback si solo devuelve el UUID
-                    resolve(lines[0].trim());
-                }
+                // stdout de powershell debería ser solo el UUID
+                resolve(stdout.trim());
             });
         });
     };
